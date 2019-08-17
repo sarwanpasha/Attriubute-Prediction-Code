@@ -1,0 +1,575 @@
+
+
+```{r Graph Reading}
+# setwd("E:/MS Computer Science/MS Thesis/R Code/R Code Attributed Graph")
+# library(igraph)
+# install.packmajors("philentropy", dependencies=TRUE)
+library(philentropy)
+library(e1071)
+library(forecast)
+# install.packmajors("RcppZiggurat")
+library(class)
+
+
+Vertices_attributes_path = "E:/MS Computer Science/MS Thesis/R Code/R Code Attributed Graph/Dataset/facebook100/Caltech/Caltech36_attributes.txt"
+Vertices_attributes = read.table(Vertices_attributes_path, header = FALSE, sep = "\t", dec = ".")
+Vertex_col_headings <- c('Status','Gender','Major','Minor','Dorm','Graduation_Year','High_school')
+names(Vertices_attributes) <- Vertex_col_headings
+
+EdgesList_path = "E:/MS Computer Science/MS Thesis/R Code/R Code Attributed Graph/Dataset/facebook100/Caltech/Caltech36_edgeList.txt"
+EdgesList = read.table(EdgesList_path, header = FALSE, sep = "\t", dec = ".")
+Edges_col_headings <- c('From','To')
+names(EdgesList) <- Edges_col_headings
+
+# library(igraph)
+# g=graph.data.frame(EdgesList)
+# EdgesList_matrix = get.adjacency(g,sparse=FALSE)
+# detach(packmajor:igraph)
+
+EdgesList_matrix = matrix(0,length(Vertices_attributes[,1]),length(Vertices_attributes[,1]))
+for (fri in 1:length(EdgesList[,1])){
+  EdgesList_matrix[EdgesList[fri,1],EdgesList[fri,2]] = 1
+}
+friend_row_without_zero_matrix = matrix(0,length(EdgesList_matrix[,1]),length(EdgesList_matrix[1,]))
+for(fri in 1:length(EdgesList_matrix[,1])){
+  friend_row = EdgesList_matrix[fri,]
+  friend_row_without_zero = which(friend_row %in% 1)
+  if(length(friend_row_without_zero)!=0){
+    friend_row_without_zero_matrix[fri,1:length(friend_row_without_zero)] = friend_row_without_zero
+    friend_row_without_zero_matrix[fri,(length(friend_row_without_zero)+1):(length(EdgesList_matrix[1,]))] = 0
+  }
+}
+# Friendship_matrix = which(EdgesList_matrix[n_neighbors[neighbors_number],]  %in% 1)
+
+# which(EdgesList_matrix[n_neighbors[neighbors_number],]  %in% 1)
+```
+
+```{r Mixing Matrix}
+n_hope_neighbors = 1
+attributeCount=7; #Attribute value (Max 7 attributes)
+Final_Accuracy = matrix(0,attributeCount,1)
+NB_Final_Accuracy = matrix(0,attributeCount,1)
+DT_Final_Accuracy = matrix(0,attributeCount,1)
+SVM_Final_Accuracy = matrix(0,attributeCount,1)
+Precision = matrix(0,attributeCount,1)
+Recall = matrix(0,attributeCount,1)
+F_Score = matrix(0,attributeCount,1)
+AVG_Accuracy_Measure = matrix(0,attributeCount,1)
+Micro_F1_precision_Recall = matrix(0,attributeCount,1)
+
+Immediate_friends_Nodes=0
+optimum_weights = matrix(0,attributeCount,attributeCount)
+
+
+for (outerLoop in 1:attributeCount){
+  attribute2=outerLoop; # Predicting attribute
+     if(attribute2 == 1){
+            Name_For_Second_Attribute_Value = 'Status';
+        }
+        else if (attribute2 == 2){
+            Name_For_Second_Attribute_Value = 'gender';
+        }
+        else if (attribute2 == 3){
+            Name_For_Second_Attribute_Value = 'Major';
+        }
+        else if (attribute2 == 4){
+                  Name_For_Second_Attribute_Value = 'Minor';
+        }
+        else if (attribute2 == 5){
+                  Name_For_Second_Attribute_Value = 'Dorm';
+        }
+        else if (attribute2 == 6){
+                  Name_For_Second_Attribute_Value = 'Year';
+        }
+        else if (attribute2 == 7){
+                  Name_For_Second_Attribute_Value = 'High_School';
+              }
+          print(paste('Predicting',Name_For_Second_Attribute_Value));
+
+    for (innerLoop in 1:attributeCount){
+
+      
+        attribute1=innerLoop; # Predictor Attribute
+        
+
+       
+     
+        
+        # print(paste('Second Attribute',attribute2,Name_For_Second_Attribute_Value));
+        # attribute1 = 1
+        # attribute2 = 4
+        
+        a1=Vertices_attributes[,attribute1];
+        a2=Vertices_attributes[,attribute2];
+        a1_distinct=unique(a1);
+        a2_distinct=unique(a2);
+        a1_distinct=a1_distinct[a1_distinct!=0];
+        a2_distinct=a2_distinct[a2_distinct!=0];
+        
+        a1_length=length(a1_distinct);
+        a2_length=length(a2_distinct);
+        
+        # print(length(a1_distinct))
+        # Vertices_attributes2 = Vertices_attributes
+         zero_rows = which(a2 %in% 0)
+        Vertices_attributes2 <- Vertices_attributes
+        if (is.integer(zero_rows) && length(zero_rows) == 0){
+          # print("True")
+        } else{
+          Vertices_attributes2 <- Vertices_attributes2[-(zero_rows),]
+        }
+        # rm(z_score_normalized)
+        ############# Caling Function #######################
+        temp_3 = error_computation(attribute1,attribute2,a1,a2, a1_distinct,a2_distinct,a1_length,a2_length,n_hope_neighbors)
+        if(attribute1==1){
+          z_score_normalized = temp_3
+        }
+        else{
+          z_score_normalized = cbind(z_score_normalized,temp_3)
+        }
+        ############# Caling Function #######################
+        # print(dim(z_score_normalized))
+    }# innerLoop ends here
+          
+
+          status_unique_values = unique(Vertices_attributes[,1])
+          status_unique_values = length(status_unique_values[status_unique_values!=0])
+          
+          gender_unique_values = unique(Vertices_attributes[,2])
+          gender_unique_values = length(gender_unique_values[gender_unique_values!=0])
+          
+          major_unique_values = unique(Vertices_attributes[,3])
+          major_unique_values = length(major_unique_values[major_unique_values!=0])
+          
+          minor_unique_values = unique(Vertices_attributes[,4])
+          minor_unique_values = length(minor_unique_values[minor_unique_values!=0])
+          
+          dorm_unique_values = unique(Vertices_attributes[,5])
+          dorm_unique_values = length(dorm_unique_values[dorm_unique_values!=0])
+        
+          year_unique_values = unique(Vertices_attributes[,6])
+          year_unique_values = length(year_unique_values[year_unique_values!=0])
+          
+          highSchool_unique_values = unique(Vertices_attributes[,7])
+          highSchool_unique_values = length(highSchool_unique_values[highSchool_unique_values!=0])
+          
+         
+          status_weight     = 	c(5.8,0.06,0.51,0.89,0.41,3.76,1.88)
+          gender_weight     = 	c(0.06,0.22,0.14,0.27,0.28,0.09,0.52)
+          major_weight      = 	c(0.51,0.14,1.03,1.92,2.2,1.03,4.8)
+          minor_weight      = 	c(0.89,0.27,1.92,4.3,6.03,2.57,13.33)
+          dorm_weight       = 	c(0.41,0.28,2.2,6.03,22.12,1.44,13.3)
+          year_weight       = 	c(3.76,0.09,1.03,2.57,1.44,9.37,5.53)
+          highSchool_weight = 	c(1.88,0.52,4.8,13.33,13.3,5.53,27.31)
+          
+          status_weight = status_weight/100
+          gender_weight = gender_weight/100
+          major_weight = major_weight/100
+          minor_weight = minor_weight/100
+          dorm_weight = dorm_weight/100
+          year_weight = year_weight/100
+          highSchool_weight = highSchool_weight/100
+
+          
+          # total_itterations = 10
+          # initial_itteration = 0
+          max_final_accuracy = 0
+          
+          
+          
+          # for(itter_status in initial_itteration:total_itterations){
+          #   for(itter_gender in initial_itteration:total_itterations){
+          #     for(itter_major in initial_itteration:total_itterations){
+               
+                        
+                        # status_weight = itter_status/total_itterations
+                        # gender_weight = itter_gender/total_itterations
+                        # major_weight = itter_major/total_itterations
+                       
+                        
+                        # if((status_weight + gender_weight + major_weight)==1){
+                          
+          weighted_z_score_normalized = z_score_normalized
+          
+          a = status_unique_values
+          weighted_z_score_normalized[,1:a] = weighted_z_score_normalized[,1:a] * status_weight[outerLoop]
+          
+          a = ((max(a)+1):((max(a)) + gender_unique_values))
+          weighted_z_score_normalized[,a] = weighted_z_score_normalized[,a] * gender_weight[outerLoop]
+          
+          a = ((max(a)+1):((max(a)) + major_unique_values))
+          weighted_z_score_normalized[,a] = weighted_z_score_normalized[,a] * major_weight[outerLoop]
+          
+          a = ((max(a)+1):((max(a)) + minor_unique_values))
+          weighted_z_score_normalized[,a] = weighted_z_score_normalized[,a] * minor_weight[outerLoop]
+          
+          a = ((max(a)+1):((max(a)) + dorm_unique_values))
+          weighted_z_score_normalized[,a] = weighted_z_score_normalized[,a] * dorm_weight[outerLoop]
+          
+          a = ((max(a)+1):((max(a)) + year_unique_values))
+          weighted_z_score_normalized[,a] = weighted_z_score_normalized[,a] * year_weight[outerLoop]
+          
+          a = ((max(a)+1):((max(a)) + highSchool_unique_values))
+          weighted_z_score_normalized[,a] = weighted_z_score_normalized[,a] * highSchool_weight[outerLoop]
+          
+         
+ 
+          
+          
+          # print(dim(weighted_z_score_normalized))
+         #Test Train Split logic Starts Here---------------------------------
+
+          ## 75% of the sample size
+
+          smp_size <- floor(0.70 * nrow(weighted_z_score_normalized))
+
+          ## set the seed to make your partition reproducible
+          set.seed(123)
+          train_ind <- sample(seq_len(nrow(weighted_z_score_normalized)), size = smp_size)
+
+          Train <- weighted_z_score_normalized[train_ind, ]
+          Test <- weighted_z_score_normalized[-train_ind, ]
+
+        #Test Train Split logic Starts Here---------------------------------
+          Train_True_Labels = Vertices_attributes2[train_ind,attribute2]
+          Test_True_Labels = Vertices_attributes2[-train_ind,attribute2]
+
+          ########### KNN Classifier Starts Here#######################################
+          prc_test_pred <- knn(train = Train, test = Test, cl = Train_True_Labels, k=10)
+
+          confusion_Matirx = matrix(0,length(a2_distinct),length(a2_distinct))
+
+          for(confuse in 1:length(Test_True_Labels)){
+            actual_Index = which(a2_distinct %in% Test_True_Labels[confuse])
+            Pred_Index = which(a2_distinct %in% prc_test_pred[confuse])
+            confusion_Matirx[actual_Index,Pred_Index] = confusion_Matirx[actual_Index,Pred_Index] + 1
+          }
+
+          max_accuracy = (sum(diag(confusion_Matirx))/sum(confusion_Matirx))*100
+          Final_Accuracy[outerLoop,1] = max_accuracy
+          ########### KNN Classifier Ends Here #######################################
+          
+          
+          
+          
+          ########### Naive Bayes Classifier Starts Here #######################################
+        True_Labels = Vertices_attributes2[,attribute2]
+        NB_Final_Accuracy[outerLoop,1] = NB_classifier_function(weighted_z_score_normalized,True_Labels)
+        ########### Naive Bayes Classifier Ends Here #######################################
+
+        ########### Decision Tree Classifier Starts Here #######################################
+        True_Labels = Vertices_attributes2[,attribute2]
+        DT_Final_Accuracy[outerLoop,1] = DT_classifier_function(weighted_z_score_normalized,True_Labels)
+        ########### Decision Tree Classifier Ends Here #######################################
+        
+        ########### SVM Classifier Starts Here #######################################
+        True_Labels = Vertices_attributes2[,attribute2]
+        SVM_Final_Accuracy[outerLoop,1] = SVM_classifier_function(weighted_z_score_normalized,True_Labels)
+        ########### SVM Classifier Ends Here #######################################
+
+     
+        
+# weighted_z_score_normalized = 0
+
+      
+    # } # Inner Loop Ends Here
+    
+} #Outer Loop Ends Here
+Final_Accuracy = t(Final_Accuracy)
+colnames(Final_Accuracy) <-Vertex_col_headings
+aa = round(Final_Accuracy, digits = 2)
+print(aa)
+
+
+NB_Final_Accuracy = t(NB_Final_Accuracy)
+colnames(NB_Final_Accuracy) <-Vertex_col_headings
+aa = round(NB_Final_Accuracy, digits = 2)
+print(aa)
+
+DT_Final_Accuracy = t(DT_Final_Accuracy)
+colnames(DT_Final_Accuracy) <-Vertex_col_headings
+aa = round(DT_Final_Accuracy, digits = 2)
+print(aa)
+
+
+SVM_Final_Accuracy = t(SVM_Final_Accuracy)
+colnames(SVM_Final_Accuracy) <-Vertex_col_headings
+aa = round(SVM_Final_Accuracy, digits = 2)
+print(aa)
+
+
+
+```
+
+
+```{r Plots}
+Vertex_col_headings_2 <- c('Status','Gender','Major','Minor','Dorm','Year','High school')
+
+plot(c(Final_Accuracy),pch=19,type = "o", col = "red", xlab = "Predicted Attributes", ylab = "Accuracy (%)",
+   main = "Accuracy Comparison (Caltech Dataset)", lwd= 3, xaxt = "n",)
+lines(c(NB_Final_Accuracy),pch=19, type = "o", col = "blue",lty=2, lwd= 3)
+lines(c(DT_Final_Accuracy),pch=18, type = "o", col = "black",lty=3, lwd= 3)
+lines(c(SVM_Final_Accuracy),pch=18, type = "o", col = "green",lty=3, lwd= 4)
+
+legend(2.5, 85, legend=c("KNN", "Naive Bayes", "Decision Tree", "SVM"),
+       col=c("red", "blue", "Black", "green"), lty=1:4, cex=0.9,text.font=4)
+axis(1, at=1:7, labels=Vertex_col_headings_2)
+
+
+```
+
+```{r Error Function}
+
+
+error_computation <- function(attribute1,attribute2,a1,a2,a1_distinct,a2_distinct,a1_length,a2_length,n_hope_neighbors) {
+ 
+        # Immediate Friends finding for a node Logic Starts Here----------------
+        #  which(EdgesList_matrix[each_immediate_friend,]  %in% 1)
+        all_nodes_a1_distribution = matrix(0,length(a1),a1_length)
+        
+        Immediate_friends_Nodes=0
+        for(each_immediate_friend in 1:length(a1)){
+          n_neighbors=0
+          temp_1 = friend_row_without_zero_matrix[each_immediate_friend,]
+          n_neighbors = temp_1[temp_1!=0]
+          # n_neighbors = which(EdgesList_matrix[each_immediate_friend,]  %in% 1)
+          Immediate_friends_Nodes = n_neighbors
+          if(n_hope_neighbors==1){
+            # Immediate_friends_Nodes = n_neighbors
+          }
+          else{
+            for(n_hope in 1:(n_hope_neighbors-1)){
+              # print(each_immediate_friend)
+              neighbors_of_neighbors=0
+               
+              temp_1 = friend_row_without_zero_matrix[n_neighbors,]
+              temp_1_list = c(temp_1)
+              neighbors_of_neighbors_tmp = temp_1_list[temp_1_list!=0]
+              neighbors_of_neighbors = c(neighbors_of_neighbors,neighbors_of_neighbors_tmp)
+              
+              # for(neighbors_number in 1:length(n_neighbors)){
+              #   temp_1 = friend_row_without_zero_matrix[n_neighbors[neighbors_number],]
+              #   neighbors_of_neighbors_tmp = temp_1[temp_1!=0]
+              #   neighbors_of_neighbors = c(neighbors_of_neighbors,neighbors_of_neighbors_tmp)
+              # }
+              neighbors_of_neighbors = unique(neighbors_of_neighbors)
+              
+              Immediate_friends_Nodes = c(Immediate_friends_Nodes,neighbors_of_neighbors)
+              n_neighbors=0
+              n_neighbors = neighbors_of_neighbors
+            }
+          }
+          Immediate_friends_Nodes = unique(Immediate_friends_Nodes)
+          
+          Immediate_friends_a1_attribute = Vertices_attributes[Immediate_friends_Nodes,attribute1]
+          if(all(Immediate_friends_a1_attribute==0)==TRUE){
+            Immediate_friends_a1_attribute_distribution = 0
+          }
+          else{
+            Immediate_friends_a1_attribute = Immediate_friends_a1_attribute[Immediate_friends_a1_attribute!=0] #Removing Zeros
+  
+            for (attri in 1:length(Immediate_friends_a1_attribute)){
+              all_nodes_a1_distribution[each_immediate_friend,which(a1_distinct %in% Immediate_friends_a1_attribute[attri])] = all_nodes_a1_distribution[each_immediate_friend,which(a1_distinct %in% Immediate_friends_a1_attribute[attri])] + 1
+            }
+
+          } # Else ends here
+          Immediate_friends_Nodes=0
+          
+        } # Each Node Friends Distribution Loop Ends Here
+        
+        
+        #Removing values containing zeros (Missing values) so that they do not effect training----
+        zero_rows = which(a2 %in% 0)
+        Vertices_attributes2 <- Vertices_attributes
+        if (is.integer(zero_rows) && length(zero_rows) == 0){
+          # print("True")
+        } else{
+          all_nodes_a1_distribution<- all_nodes_a1_distribution[-(zero_rows),]
+          Vertices_attributes2 <- Vertices_attributes2[-(zero_rows),]
+        }
+        
+          all_nodes_a1_distribution_normalized <- all_nodes_a1_distribution/rowSums(all_nodes_a1_distribution) 
+        
+        z_score_normalized = all_nodes_a1_distribution_normalized
+        
+        # z_score_normalized = scale(all_nodes_a1_distribution)
+        # 
+        if (any(is.nan(z_score_normalized))==TRUE){
+        z_score_normalized[is.nan(z_score_normalized)] <- 0
+        }
+        return(z_score_normalized)
+}
+
+
+
+DT_classifier_function <- function(final_mat,True_Labels) {
+  library(caret)
+  library(rpart.plot)
+weighted_z_score_normalized_with_true_class = matrix(0,length(True_Labels),(length(final_mat[1,])+1))
+        weighted_z_score_normalized_with_true_class[,1:length(final_mat[1,])] = final_mat
+        weighted_z_score_normalized_with_true_class[,(length(final_mat[1,])+1)] = True_Labels
+        
+        final_matrix =   weighted_z_score_normalized_with_true_class
+        names = matrix("",1,length(final_matrix[1,]))
+        for(h in 1:length(final_matrix[1,])){
+          names[1,h] = paste("Column_",h,sep="")
+        }
+        colnames(final_matrix) <- names
+        predicted_name = paste("Column_",length(final_matrix[1,]),sep="")
+        
+        #Test Train Split logic Starts Here---------------------------------
+
+          ## 75% of the sample size
+        
+          smp_size <- floor(0.70 * nrow(final_matrix))
+
+          ## set the seed to make your partition reproducible
+          set.seed(123)
+          train_ind <- sample(seq_len(nrow(final_matrix)), size = smp_size)
+
+          train <- final_matrix[train_ind, ]
+          test <- final_matrix[-train_ind, ]
+
+        #Test Train Split logic Starts Here---------------------------------
+          
+        train = data.frame(train)
+        test = data.frame(test)
+        
+        # train[,3] = NULL
+        # test[,3] = NULL
+        frm <- formula(paste("as.factor(",predicted_name,")","~."))
+        
+        trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+        set.seed(3333)
+        dtree_fit <- train(frm, data = train, method = "rpart",
+                   parms = list(split = "information"),
+                   trControl=trctrl,
+                   tuneLength = 10)
+
+        DT_Predictions=predict(dtree_fit,test)
+
+        Actual_Attri_Values = test[,length(test[1,])]
+        
+        confusion_Matirx = matrix(0,length(a2_distinct),length(a2_distinct))
+        for(confuse in 1:length(DT_Predictions)){
+          actual_Index = which(a2_distinct %in% Actual_Attri_Values[confuse])
+          Pred_Index = which(a2_distinct %in% DT_Predictions[confuse])
+          confusion_Matirx[actual_Index,Pred_Index] = confusion_Matirx[actual_Index,Pred_Index] + 1
+        }
+        
+        DT_Accuracy = (sum(diag(confusion_Matirx))/sum(confusion_Matirx))*100
+        return(DT_Accuracy)
+}
+
+
+
+NB_classifier_function <- function(final_mat,True_Labels) {
+weighted_z_score_normalized_with_true_class = matrix(0,length(True_Labels),(length(final_mat[1,])+1))
+        weighted_z_score_normalized_with_true_class[,1:length(final_mat[1,])] = final_mat
+        weighted_z_score_normalized_with_true_class[,(length(final_mat[1,])+1)] = True_Labels
+        
+        final_matrix =   weighted_z_score_normalized_with_true_class
+        names = matrix("",1,length(final_matrix[1,]))
+        for(h in 1:length(final_matrix[1,])){
+          names[1,h] = paste("Column_",h,sep="")
+        }
+        colnames(final_matrix) <- names
+        predicted_name = paste("Column_",length(final_matrix[1,]),sep="")
+        
+        #Test Train Split logic Starts Here---------------------------------
+
+          ## 75% of the sample size
+        
+          smp_size <- floor(0.70 * nrow(final_matrix))
+
+          ## set the seed to make your partition reproducible
+          set.seed(123)
+          train_ind <- sample(seq_len(nrow(final_matrix)), size = smp_size)
+
+          train <- final_matrix[train_ind, ]
+          test <- final_matrix[-train_ind, ]
+
+        #Test Train Split logic Starts Here---------------------------------
+          
+        train = data.frame(train)
+        test = data.frame(test)
+        
+        # train[,3] = NULL
+        # test[,3] = NULL
+        frm <- formula(paste("as.factor(",predicted_name,")","~."))
+        Naive_Bayes_Model=naiveBayes(frm, data=train)
+        
+        # Naive_Bayes_Model=naiveBayes(as.factor( Column_3 ) ~., data=train)
+        NB_Predictions=predict(Naive_Bayes_Model,test)
+
+        Actual_Attri_Values = test[,length(test[1,])]
+        
+        confusion_Matirx = matrix(0,length(a2_distinct),length(a2_distinct))
+        for(confuse in 1:length(NB_Predictions)){
+          actual_Index = which(a2_distinct %in% Actual_Attri_Values[confuse])
+          Pred_Index = which(a2_distinct %in% NB_Predictions[confuse])
+          confusion_Matirx[actual_Index,Pred_Index] = confusion_Matirx[actual_Index,Pred_Index] + 1
+        }
+        
+        NB_Accuracy = (sum(diag(confusion_Matirx))/sum(confusion_Matirx))*100
+        return(NB_Accuracy)
+}
+
+SVM_classifier_function <- function(final_mat,True_Labels) {
+weighted_z_score_normalized_with_true_class = matrix(0,length(True_Labels),(length(final_mat[1,])+1))
+        weighted_z_score_normalized_with_true_class[,1:length(final_mat[1,])] = final_mat
+        weighted_z_score_normalized_with_true_class[,(length(final_mat[1,])+1)] = True_Labels
+        
+        final_matrix =   weighted_z_score_normalized_with_true_class
+        names = matrix("",1,length(final_matrix[1,]))
+        for(h in 1:length(final_matrix[1,])){
+          names[1,h] = paste("Column_",h,sep="")
+        }
+        colnames(final_matrix) <- names
+        predicted_name = paste("Column_",length(final_matrix[1,]),sep="")
+        
+        #Test Train Split logic Starts Here---------------------------------
+
+          ## 75% of the sample size
+        
+          smp_size <- floor(0.70 * nrow(final_matrix))
+
+          ## set the seed to make your partition reproducible
+          set.seed(123)
+          train_ind <- sample(seq_len(nrow(final_matrix)), size = smp_size)
+
+          train <- final_matrix[train_ind, ]
+          test <- final_matrix[-train_ind, ]
+
+        #Test Train Split logic Starts Here---------------------------------
+          
+        train = data.frame(train)
+        test = data.frame(test)
+        
+        # train[,3] = NULL
+        # test[,3] = NULL
+        frm <- formula(paste("as.factor(",predicted_name,")","~."))
+        SVM_Model=svm(frm, data=train,type = 'C-classification',kernel = 'linear')
+        
+        SVM_Predictions=predict(SVM_Model,test)
+
+        Actual_Attri_Values = test[,length(test[1,])]
+        
+        confusion_Matirx = matrix(0,length(a2_distinct),length(a2_distinct))
+        for(confuse in 1:length(SVM_Predictions)){
+          actual_Index = which(a2_distinct %in% Actual_Attri_Values[confuse])
+          Pred_Index = which(a2_distinct %in% SVM_Predictions[confuse])
+          confusion_Matirx[actual_Index,Pred_Index] = confusion_Matirx[actual_Index,Pred_Index] + 1
+        }
+        
+        SVM_Accuracy = (sum(diag(confusion_Matirx))/sum(confusion_Matirx))*100
+        return(SVM_Accuracy)
+}
+
+
+```
+
+
+# rm(list=ls()) #Code to clear all variables
+
+
